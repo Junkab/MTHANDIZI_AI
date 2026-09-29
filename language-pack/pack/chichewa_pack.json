@@ -1,0 +1,156 @@
+{
+  "meta": {
+    "version": "0.1.0-draft",
+    "description": "Every citizen-facing string in MTHANDIZI. No hardcoded strings anywhere else in the app.",
+    "orthography": "Standard Malawian Chichewa. Differs from Zambian Nyanja spelling in places.",
+    "reviewed_by": "",
+    "reviewed_on": "",
+    "review_status": "UNREVIEWED — no entry in this file has been approved by a native speaker yet"
+  },
+
+  "speech": {
+    "greeting_idle": {
+      "chi": "Moni. Ndine Mthandizi. Ndingakuthandizeni bwanji lero?",
+      "en": "Hello. I am Mthandizi. How can I help you today?",
+      "audio": "prompts/greeting_idle.wav",
+      "reviewed": false
+    },
+    "intent_confirm": {
+      "chi": "Mukufuna {service}, si choncho?",
+      "en": "You want {service}, is that right?",
+      "audio": null,
+      "note": "Dynamic — {service} substituted from lexicon.services at runtime. Cannot be pre-recorded whole.",
+      "reviewed": false
+    },
+    "intent_clarify": {
+      "chi": "Kodi mukufuna {first}, kapena {second}?",
+      "en": "Do you want {first}, or {second}?",
+      "audio": null,
+      "note": "Dynamic conversational clarification for two likely intents; never rendered as a menu.",
+      "reviewed": false
+    },
+    "intent_explain_again": {
+      "chi": "Pepani, sindinamve bwino. Mungandiuze m'mawu anu zomwe mukufuna?",
+      "en": "Sorry, I didn't understand. Can you tell me in your own words what you need?",
+      "audio": null,
+      "note": "Dynamic clarification prompt, reused for the final open explanation attempt.",
+      "reviewed": false
+    },
+    "intent_fallback": {
+      "chi": "Pepani, sindinamve bwino. Chonde pemphani thandizo kwa munthu amene akugwira ntchito pano.",
+      "en": "Sorry, I didn't understand. Please ask a staff member for help.",
+      "audio": null,
+      "note": "Human assistance fallback after clarification attempts.",
+      "reviewed": false
+    },
+
+    "ask_child_name": { "chi": "Dzina la mwana ndi ndani?", "en": "What is the child's name?", "audio": "prompts/ask_child_name.wav", "reviewed": false },
+    "ask_child_dob": { "chi": "Mwana anabadwa liti? Nenani tsiku, mwezi, ndi chaka.", "en": "When was the child born? Say the day, month, and year.", "audio": "prompts/ask_child_dob.wav", "reviewed": false },
+    "ask_birth_place": { "chi": "Mwana anabadwira kuti?", "en": "Where was the child born?", "audio": "prompts/ask_birth_place.wav", "reviewed": false },
+    "ask_mother_name": { "chi": "Dzina la amayi a mwana ndi ndani?", "en": "What is the mother's name?", "audio": "prompts/ask_mother_name.wav", "reviewed": false },
+    "ask_father_name": { "chi": "Kodi mukufuna kuika dzina la abambo a mwana? Mungasiye ngati mukufuna.", "en": "Would you like to add the father's name? You may skip this.", "audio": "prompts/ask_father_name.wav", "reviewed": false },
+    "ask_village": { "chi": "Muli mmudzi wanji?", "en": "Which village are you from?", "audio": "prompts/ask_village.wav", "reviewed": false },
+    "ask_ta": { "chi": "Muli mu Traditional Authority yanji?", "en": "Which Traditional Authority?", "audio": "prompts/ask_ta.wav", "reviewed": false },
+    "ask_district": { "chi": "Muli mboma lanji?", "en": "Which district are you in?", "audio": "prompts/ask_district.wav", "reviewed": false },
+
+    "ask_patient_name": { "chi": "Dzina lanu ndi ndani?", "en": "What is your name?", "audio": "prompts/ask_patient_name.wav", "reviewed": false },
+    "ask_patient_dob": { "chi": "Munabadwa liti?", "en": "When were you born?", "audio": "prompts/ask_patient_dob.wav", "reviewed": false },
+    "ask_reason_visit": { "chi": "Mukudwala chiyani? Tandiuzeni mwachidule.", "en": "What is wrong? Tell me briefly.", "audio": "prompts/ask_reason_visit.wav", "reviewed": false },
+    "ask_department": { "chi": "Mukufuna kupita ku chipinda chanji?", "en": "Which department do you need?", "audio": "prompts/ask_department.wav", "reviewed": false },
+    "ask_contact_phone": { "chi": "Muli ndi nambala ya foni? Mungasiye ngati mulibe.", "en": "Do you have a phone number? You may skip if not.", "audio": "prompts/ask_contact_phone.wav", "reviewed": false },
+
+    "ask_id_reason": { "chi": "Kodi mukufuna chiphaso chatsopano, kapena chanu chataika kapena chawonongeka?", "en": "Do you need a new ID, or is yours lost or damaged?", "audio": "prompts/ask_id_reason.wav", "reviewed": false },
+    "ask_current_address": { "chi": "Mukukhala kuti pano?", "en": "Where do you currently live?", "audio": "prompts/ask_current_address.wav", "reviewed": false },
+
+    "ask_nationality": { "chi": "Ndinu wa dziko lanji?", "en": "What is your nationality?", "audio": "prompts/ask_nationality.wav", "reviewed": false },
+    "ask_doc_type": { "chi": "Mukufuna pasipoti yatsopano kapena kukonzanso yakale?", "en": "New passport or renewing an old one?", "audio": "prompts/ask_doc_type.wav", "reviewed": false },
+    "ask_travel_purpose": { "chi": "Mukupita kunja chifukwa chiyani?", "en": "What is the purpose of your travel?", "audio": "prompts/ask_travel_purpose.wav", "reviewed": false },
+
+    "review_intro": { "chi": "Tiyeni tiwone zonse zimene mwandiuzani. Ndidzawerenga, mundiuze ngati zonse ndi zolondola.", "en": "Let's review everything you've told me. I'll read it back — tell me if it's all correct.", "audio": "prompts/review_intro.wav", "reviewed": false },
+    "review_field": { "chi": "{label}: {value}. Ndi zolondola?", "en": "{label}: {value}. Is that correct?", "audio": null, "note": "Dynamic per field", "reviewed": false },
+    "confirm_all_correct": { "chi": "Kodi zonse ndi zolondola?", "en": "Is everything correct?", "audio": "prompts/confirm_all_correct.wav", "reviewed": false },
+    "ask_which_field_to_fix": { "chi": "Chiyani mukufuna kukonza?", "en": "What would you like to fix?", "audio": "prompts/ask_which_field_to_fix.wav", "reviewed": false },
+
+    "completion": {
+      "chi": "Zatha. Nambala yanu ndi {reference}. Iyi si chikalata chovomerezeka — ndi pempho lokonzeka loti liwunikidwe ndi wogwira ntchito.",
+      "en": "Done. Your reference number is {reference}. This is not an issued document — it is a prepared application awaiting officer verification.",
+      "audio": null, "note": "Dynamic — {reference} substituted", "reviewed": false
+    },
+
+    "reask_1": { "chi": "Pepani, sindinamve bwino. Bwerezaninso, chonde.", "en": "Sorry, I didn't catch that. Please say it again.", "audio": "prompts/reask_1.wav", "reviewed": false },
+    "reask_2_with_example": { "chi": "Bwerezaninso pang'onopang'ono. Mwachitsanzo: {example}.", "en": "Say it again, more slowly. For example: {example}.", "audio": null, "note": "Dynamic — {example} substituted", "reviewed": false },
+    "reask_3_escalate_touch": { "chi": "Sindikumva bwino. Chonde pemphani thandizo kwa wogwira ntchito.", "en": "I'm having trouble hearing you. Please ask a staff member for help.", "audio": null, "note": "Human assistance fallback; no service menu is offered.", "reviewed": false }
+  },
+
+  "ui": {
+    "app_name": { "chi": "Mthandizi", "en": "Mthandizi", "exempt_identical": true, "reviewed": false },
+    "tagline": { "chi": "Lankhulani. Mthandizi akuthandizeni.", "en": "Speak. Mthandizi will help you.", "reviewed": false },
+    "push_to_talk": { "chi": "Dinani kuti mulankhule", "en": "Tap to speak", "reviewed": false },
+    "listening": { "chi": "Ndikumvetsera...", "en": "Listening...", "reviewed": false },
+    "processing": { "chi": "Ndikuganiza...", "en": "Thinking...", "reviewed": false },
+    "skip_button": { "chi": "Pitirizani", "en": "Skip", "reviewed": false },
+    "back_button": { "chi": "Kumbuyo", "en": "Back", "reviewed": false },
+    "yes_button": { "chi": "Inde", "en": "Yes", "reviewed": false },
+    "no_button": { "chi": "Ayi", "en": "No", "reviewed": false },
+    "fix_this_field": { "chi": "Konzani ichi", "en": "Fix this", "reviewed": false },
+    "review_all": { "chi": "Onani zonse", "en": "Review everything", "reviewed": false },
+    "offline_indicator": { "chi": "Osalumikizidwa", "en": "Offline", "reviewed": false },
+    "online_indicator": { "chi": "Zolumikizidwa", "en": "Online — syncing", "reviewed": false },
+    "start_over": { "chi": "Yambaninso", "en": "Start over", "reviewed": false },
+    "hide_screen": { "chi": "Bisani pa siketini", "en": "Hide screen", "reviewed": false }
+  },
+
+  "confirm": {
+    "disclaimer_not_official": {
+      "chi": "Chidziwitso: Ichi ndi chitsanzo chosonyeza momwe zingagwirire ntchito. Sichikalata chovomerezeka ndi boma.",
+      "en": "Notice: this is a prototype demonstration. It is not an official government-issued document.",
+      "reviewed": false
+    }
+  },
+
+  "errors": {
+    "no_camera": { "chi": "Kamera sikupezeka. Gwiritsani ntchito chala pa siketini kuti muyambe.", "en": "No camera detected. Use touch to begin.", "reviewed": false },
+    "mic_denied": { "chi": "Sitikupeza mawu anu. Gwiritsani ntchito siketini.", "en": "We can't hear you. Please use the touch screen.", "reviewed": false },
+    "service_unreachable": { "chi": "Pepani, pali vuto laling'ono. Yesaninso.", "en": "Sorry, something went wrong. Please try again.", "reviewed": false },
+    "sync_failed": { "chi": "Zosungidwa mwa ino sizinatumizidwe pakadali pano. Zidzatumizidwa pamene network ipezeka.", "en": "This record hasn't synced yet. It will send automatically when a connection is available.", "reviewed": false }
+  },
+
+  "lexicon": {
+    "yes": ["inde", "eya", "ee", "ndi choncho", "zoona", "ndithu", "chabwino"],
+    "no": ["ayi", "iyayi", "ndikukana", "si choncho", "sindikufuna"],
+    "repeat": ["bwerezani", "ndibwerezeni", "sindinamve", "nenaninso"],
+    "back": ["bwererani", "kumbuyo", "ndibwerere"],
+    "help": ["thandizeni", "sindikudziwa", "ndithandizeni"],
+    "cancel": ["siyani", "ndikusiya", "basi"],
+    "services": {
+      "BIRTH_REGISTRATION": "kulembetsa mwana",
+      "HOSPITAL_QUEUE": "kuonana ndi dokotala",
+      "NATIONAL_ID": "chiphaso cha dziko",
+      "IMMIGRATION": "chikalata cha ulendo",
+      "LAND_REGISTRATION": "kulembetsa malo",
+      "HEALTH_FACILITY_INFO": "kudziwa komwe kuli chipatala"
+    },
+    "months": {
+      "01": "Januwale", "02": "Febuluwale", "03": "Malichi", "04": "Epulo",
+      "05": "Meyi", "06": "Juni", "07": "Julayi", "08": "Ogasiti",
+      "09": "Seputembala", "10": "Okutobala", "11": "Novembala", "12": "Disembala"
+    },
+    "districts": [
+      "Lilongwe", "Blantyre", "Mzuzu", "Zomba", "Kasungu", "Mangochi",
+      "Salima", "Dedza", "Ntcheu", "Nkhotakota", "Mchinji", "Dowa",
+      "Thyolo", "Mulanje", "Chikwawa", "Nsanje", "Balaka", "Machinga",
+      "Phalombe", "Chiradzulu", "Neno", "Karonga", "Rumphi", "Nkhata Bay",
+      "Mzimba", "Chitipa", "Likoma", "Ntchisi"
+    ],
+    "note_districts": "First-draft list, not verified against an official gazetteer. Validate before deployment."
+  },
+
+  "intents": {
+    "BIRTH_REGISTRATION": ["ndikufuna kulembetsa mwana wanga", "kulembetsa mwana", "kalata ya kubadwa", "satifiketi ya kubadwa", "mwana wanga wabadwa"],
+    "HOSPITAL_QUEUE": ["ndikufuna kuonana ndi dokotala", "ndikudwala", "ndikufuna chithandizo ku chipatala", "ndabwera ku chipatala"],
+    "NATIONAL_ID": ["ndikufuna chiphaso cha dziko", "ndataya ID yanga", "ndikufuna national ID", "chiphaso changa chatha"],
+    "IMMIGRATION": ["ndikufuna pasipoti", "ndikufuna kupita kunja", "ndikufuna kukonza pasipoti", "pasipoti yanga", "chikalata cha ulendo"],
+    "LAND_REGISTRATION": ["ndikufuna kulembetsa malo", "ndikufuna kulembetsa nthaka", "chikalata cha malo", "umwini wa nthaka"],
+    "HEALTH_FACILITY_INFO": ["chipatala chili kuti", "chipatala chapafupi", "komwe kuli chipatala", "adilesi ya chipatala"]
+  }
+}

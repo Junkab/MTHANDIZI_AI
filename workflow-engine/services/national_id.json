@@ -1,0 +1,12 @@
+{
+  "id": "NATIONAL_ID",
+  "referencePrefix": "ID",
+  "slots": [
+    { "id": "name",             "type": "OPEN_NAME",  "required": true, "label": "Full name" },
+    { "id": "dob",              "type": "DATE",       "required": true, "label": "Date of birth" },
+    { "id": "birth_place",      "type": "FREE_TEXT",  "required": true, "label": "Place of birth" },
+    { "id": "current_address",  "type": "FREE_TEXT",  "required": true, "label": "Current address" },
+    { "id": "reason",           "type": "CLOSED_SET", "required": true, "label": "Reason",
+      "choices": ["NEW", "LOST", "DAMAGED"] }
+  ]
+}

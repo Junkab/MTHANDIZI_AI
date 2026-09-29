@@ -1,0 +1,8 @@
+file,reference,slot,expected
+recordings/q01.wav,Ndikufuna kulembetsa mwana wanga,intent,BIRTH_REGISTRATION
+recordings/q04.wav,Ndikufuna kuonana ndi dokotala,intent,HOSPITAL_QUEUE
+recordings/q11.wav,Inde,yesno,YES
+recordings/q14.wav,Ayi,yesno,NO
+recordings/q17.wav,Lilongwe,district,Lilongwe
+recordings/q22.wav,Malichi,month,03
+recordings/f01.wav,Dzina langa ndine Mathews Dube,,

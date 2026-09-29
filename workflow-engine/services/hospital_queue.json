@@ -1,0 +1,12 @@
+{
+  "id": "HOSPITAL_QUEUE",
+  "referencePrefix": "HQ",
+  "slots": [
+    { "id": "patient_name",  "type": "OPEN_NAME",  "required": true,  "label": "Patient's name" },
+    { "id": "patient_dob",   "type": "DATE",       "required": true,  "label": "Date of birth" },
+    { "id": "reason_visit",  "type": "FREE_TEXT",  "required": true,  "label": "Reason for visit" },
+    { "id": "department",    "type": "CLOSED_SET", "required": true,  "label": "Department",
+      "choices": ["General", "Maternity", "Paediatrics", "Emergency", "Outpatient"] },
+    { "id": "contact_phone", "type": "FREE_TEXT",  "required": false, "label": "Contact phone" }
+  ]
+}

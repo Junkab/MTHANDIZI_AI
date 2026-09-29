@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ny">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTHANDIZI — Speech Lab</title>
+<style>
+  :root {
+    --bg: #0f1613; --panel: #18221e; --line: #2a3a33;
+    --ink: #eaf2ee; --muted: #8fa89d;
+    --accent: #d98324; --good: #4caf7d; --warn: #e2b93b; --bad: #d95f5f;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; background: var(--bg); color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  header { margin-bottom: 20px; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -.02em; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 18px;
+  }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em;
+       color: var(--muted); margin: 0 0 14px; font-weight: 600; }
+  button {
+    font: inherit; font-weight: 600; border: 0; border-radius: 10px;
+    padding: 14px 22px; cursor: pointer; background: var(--accent); color: #1a1208;
+  }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.rec { background: var(--bad); color: #fff; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  input[type=text] {
+    flex: 1 1 320px; min-width: 0; font: inherit; padding: 13px 14px;
+    background: #101815; border: 1px solid var(--line); border-radius: 10px;
+    color: var(--ink);
+  }
+  .transcript {
+    font-size: 26px; line-height: 1.35; min-height: 44px; margin: 6px 0 14px;
+    word-break: break-word;
+  }
+  .meta { color: var(--muted); font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px;
+       text-transform: uppercase; letter-spacing: .06em; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px;
+          font-size: 12px; font-weight: 700; }
+  .ACCEPT { background: rgba(76,175,125,.18); color: var(--good); }
+  .DISAMBIGUATE { background: rgba(226,185,59,.18); color: var(--warn); }
+  .REJECT { background: rgba(217,95,95,.18); color: var(--bad); }
+  .hint { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .err { color: var(--bad); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>MTHANDIZI — Speech Lab</h1>
+    <div class="sub" id="status">Phase 0. Checking service…</div>
+  </header>
+
+  <div class="panel">
+    <h2>Listen — lankhulani m'Chichewa</h2>
+    <div class="row">
+      <button id="recBtn">Hold to speak</button>
+      <span class="meta" id="recMeta">Ready</span>
+    </div>
+    <div class="transcript" id="transcript">—</div>
+    <div class="meta" id="timing"></div>
+    <table id="resTable" hidden>
+      <thead><tr><th>Slot</th><th>Outcome</th><th>Resolved</th><th>Score</th><th>Runner-up</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="hint">
+      Try: <em>Ndikufuna kulembetsa mwana wanga</em> · <em>Ndikudwala</em> ·
+      <em>Lilongwe</em> · <em>Inde</em>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Speak — mvetserani mawu</h2>
+    <div class="row">
+      <input type="text" id="ttsText" value="Moni. Ndine Mthandizi. Ndingakuthandizeni bwanji lero?">
+      <button id="ttsBtn">Play</button>
+    </div>
+    <div class="meta" id="ttsMeta"></div>
+    <audio id="player" controls style="width:100%;margin-top:12px"></audio>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let recorder = null, chunks = [], startedAt = 0;
+
+fetch('/health').then(r => r.json()).then(h => {
+  $('status').textContent =
+    `ASR: ${h.asr_checkpoint} · TTS: ${h.tts_checkpoint} · ${h.recorded_prompts} recorded prompts`;
+}).catch(() => { $('status').innerHTML = '<span class="err">Service not reachable</span>'; });
+
+async function startRec() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
+    });
+    recorder = new MediaRecorder(stream);
+    chunks = [];
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); send(); };
+    recorder.start();
+    startedAt = Date.now();
+    $('recBtn').classList.add('rec');
+    $('recBtn').textContent = 'Listening… release to stop';
+    $('recMeta').textContent = 'Recording';
+  } catch (e) {
+    $('recMeta').innerHTML = '<span class="err">Mic denied: ' + e.message + '</span>';
+  }
+}
+
+function stopRec() {
+  if (recorder && recorder.state === 'recording') recorder.stop();
+  $('recBtn').classList.remove('rec');
+  $('recBtn').textContent = 'Hold to speak';
+}
+
+async function send() {
+  const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
+  $('recMeta').textContent = `Transcribing ${secs}s of audio…`;
+  $('transcript').textContent = '…';
+  const fd = new FormData();
+  fd.append('audio', new Blob(chunks, { type: 'audio/webm' }), 'clip.webm');
+  try {
+    const res = await fetch('/asr', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error(await res.text());
+    const d = await res.json();
+    $('transcript').textContent = d.text || '(nothing heard)';
+    $('timing').textContent =
+      `${d.seconds}s for ${d.audio_seconds}s of audio (RTF ${d.realtime_factor})`;
+    const tbody = $('resTable').querySelector('tbody');
+    tbody.innerHTML = '';
+    for (const [slot, r] of Object.entries(d.resolutions)) {
+      tbody.insertAdjacentHTML('beforeend',
+        `<tr><td>${slot}</td>
+             <td><span class="pill ${r.outcome}">${r.outcome}</span></td>
+             <td>${r.key ?? '—'}</td>
+             <td>${r.score}</td>
+             <td>${r.runner_up ?? '—'} (${r.runner_up_score})</td></tr>`);
+    }
+    $('resTable').hidden = false;
+    $('recMeta').textContent = 'Ready';
+  } catch (e) {
+    $('transcript').innerHTML = '<span class="err">Failed</span>';
+    $('recMeta').innerHTML = '<span class="err">' + e.message + '</span>';
+  }
+}
+
+const btn = $('recBtn');
+btn.addEventListener('mousedown', startRec);
+btn.addEventListener('mouseup', stopRec);
+btn.addEventListener('mouseleave', stopRec);
+btn.addEventListener('touchstart', e => { e.preventDefault(); startRec(); });
+btn.addEventListener('touchend', e => { e.preventDefault(); stopRec(); });
+
+$('ttsBtn').addEventListener('click', async () => {
+  $('ttsMeta').textContent = 'Synthesising…';
+  try {
+    const res = await fetch('/tts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: $('ttsText').value })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    $('ttsMeta').textContent =
+      `source: ${res.headers.get('X-Tts-Source')} · ${res.headers.get('X-Tts-Seconds')}s`;
+    const blob = await res.blob();
+    $('player').src = URL.createObjectURL(blob);
+    $('player').play();
+  } catch (e) {
+    $('ttsMeta').innerHTML = '<span class="err">' + e.message + '</span>';
+  }
+});
+</script>
+</body>
+</html>

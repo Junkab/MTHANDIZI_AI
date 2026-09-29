@@ -1,0 +1,41 @@
+file,reference,slot,expected
+recordings/q01.wav,Ndikufuna kulembetsa mwana wanga,intent,BIRTH_REGISTRATION
+recordings/q02.wav,Ndikufuna kalata ya kubadwa,intent,BIRTH_REGISTRATION
+recordings/q03.wav,Mwana wanga wabadwa ndikufuna kulembetsa,intent,BIRTH_REGISTRATION
+recordings/q04.wav,Ndikufuna kuonana ndi dokotala,intent,HOSPITAL_QUEUE
+recordings/q05.wav,Ndikudwala,intent,HOSPITAL_QUEUE
+recordings/q06.wav,Ndabwera ku chipatala,intent,HOSPITAL_QUEUE
+recordings/q07.wav,Ndikufuna chiphaso cha dziko,intent,NATIONAL_ID
+recordings/q08.wav,Ndataya chiphaso changa,intent,NATIONAL_ID
+recordings/q09.wav,Ndikufuna pasipoti,intent,IMMIGRATION
+recordings/q10.wav,Ndikufuna kupita kunja,intent,IMMIGRATION
+recordings/q11.wav,Inde,yesno,YES
+recordings/q12.wav,Eya,yesno,YES
+recordings/q13.wav,Ndithu,yesno,YES
+recordings/q14.wav,Ayi,yesno,NO
+recordings/q15.wav,Iyayi,yesno,NO
+recordings/q16.wav,Sindikufuna,yesno,NO
+recordings/q17.wav,Lilongwe,district,Lilongwe
+recordings/q18.wav,Blantyre,district,Blantyre
+recordings/q19.wav,Ku Mzuzu,district,Mzuzu
+recordings/q20.wav,Mangochi,district,Mangochi
+recordings/q21.wav,Thyolo,district,Thyolo
+recordings/q22.wav,Malichi,month,03
+recordings/q23.wav,Okutobala,month,10
+recordings/q24.wav,Disembala,month,12
+recordings/x01.wav,Ndikufuna kulembetsa mwana wanga,intent,BIRTH_REGISTRATION
+recordings/x02.wav,Ndikufuna kalata ya kubadwa,intent,BIRTH_REGISTRATION
+recordings/x03.wav,Mwana wanga wabadwa ndikufuna kulembetsa,intent,BIRTH_REGISTRATION
+recordings/x04.wav,Ndikufuna kuonana ndi dokotala,intent,HOSPITAL_QUEUE
+recordings/x05.wav,Ndikudwala,intent,HOSPITAL_QUEUE
+recordings/x06.wav,Ndabwera ku chipatala,intent,HOSPITAL_QUEUE
+recordings/x07.wav,Ndikufuna chiphaso cha dziko,intent,NATIONAL_ID
+recordings/x08.wav,Ndataya chiphaso changa,intent,NATIONAL_ID
+recordings/x09.wav,Ndikufuna pasipoti,intent,IMMIGRATION
+recordings/x10.wav,Ndikufuna kupita kunja,intent,IMMIGRATION
+recordings/x11.wav,Inde,yesno,YES
+recordings/x12.wav,Eya,yesno,YES
+recordings/f01.wav,Dzina langa ndine Mathews Dube,,
+recordings/f02.wav,Ndinabadwa pa tsiku la khumi la mwezi wa Malichi,,
+recordings/f03.wav,Ndimakhala ku mudzi wa Chilinde mfumu Kabudula,,
+recordings/f04.wav,Sindinamve bwino bwerezani chonde,,

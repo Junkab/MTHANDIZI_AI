@@ -1,0 +1,37 @@
+# MTHANDIZI Speech Lab
+#
+# Targets Python 3.13 (Windows). NOTE: Python 3.11 no longer ships binary
+# installers (PEP 664 - 3.11 is security-fixes-only via source since 2025), so
+# this project moved to 3.13. Every pin below was checked against PyPI's JSON
+# API to confirm a real Windows cp313 wheel exists, not assumed. See
+# BUILD_LOG.md "Python version change" for the verification trail.
+#
+# torch is the one that actually mattered: 2.4.1 and 2.5.1 have NO Windows
+# 3.13 wheels at all; 2.6.0 is the first version that does.
+
+# torch is not the only package that needed a version bump for 3.13 — tokenizers
+# is the other one. transformers 4.44.2 pins tokenizers<0.20, and tokenizers 0.19.x
+# has NO Windows 3.13 wheel, so pip fell back to building it from source (needs
+# Rust, which then also failed to download on the operator's machine). tokenizers
+# 0.20.3 is the first version with a real win cp313 wheel; transformers 4.45.2 is
+# the first transformers release that allows that tokenizers version. Confirmed via
+# PyPI JSON API, not guessed — see BUILD_LOG.md.
+
+transformers==4.45.2
+tokenizers==0.20.3
+torch==2.6.0
+librosa==0.10.2.post1
+soundfile==0.12.1
+numpy==2.2.6
+scipy==1.15.2
+
+fastapi==0.114.2
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+pydantic==2.9.2
+
+huggingface-hub==0.24.7
+accelerate==0.34.2
+
+pytest==8.3.3
+httpx==0.27.2

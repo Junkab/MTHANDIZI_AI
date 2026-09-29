@@ -1,0 +1,12 @@
+{
+  "id": "IMMIGRATION",
+  "referencePrefix": "IM",
+  "slots": [
+    { "id": "name",            "type": "OPEN_NAME",  "required": true, "label": "Full name" },
+    { "id": "dob",             "type": "DATE",       "required": true, "label": "Date of birth" },
+    { "id": "nationality",     "type": "FREE_TEXT",  "required": true, "label": "Nationality" },
+    { "id": "doc_type",        "type": "CLOSED_SET", "required": true, "label": "Document type",
+      "choices": ["NEW", "RENEWAL"] },
+    { "id": "travel_purpose",  "type": "FREE_TEXT",  "required": true, "label": "Purpose of travel" }
+  ]
+}

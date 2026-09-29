@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="ny">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTHANDIZI — Kiosk Demo</title>
+<style>
+  :root {
+    --bg: #0f1613; --panel: #18221e; --line: #2a3a33;
+    --ink: #eaf2ee; --muted: #8fa89d;
+    --accent: #d98324; --good: #4caf7d; --warn: #e2b93b; --bad: #d95f5f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .kiosk {
+    width: 100%; max-width: 480px; min-height: 640px; margin: 20px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+    padding: 28px; display: flex; flex-direction: column;
+  }
+  .setup-banner {
+    background: rgba(226,185,59,.12); border: 1px solid var(--warn);
+    border-radius: 10px; padding: 10px 14px; font-size: 12px; color: var(--warn);
+    margin-bottom: 16px; line-height: 1.4;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .tagline { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .screen { flex: 1; display: flex; flex-direction: column; }
+  .hidden { display: none !important; }
+
+  .prompt { font-size: 22px; font-weight: 600; margin-bottom: 6px; line-height: 1.35; }
+  .prompt-en { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+  .big-button {
+    font: inherit; font-weight: 700; font-size: 17px; border: 0; border-radius: 14px;
+    padding: 18px; cursor: pointer; background: var(--accent); color: #1a1208;
+    width: 100%; margin-top: auto;
+  }
+  .big-button.listening { background: var(--bad); color: #fff; }
+  .big-button:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; gap: 10px; }
+  .row .big-button { margin-top: 0; }
+  button.secondary {
+    font: inherit; font-weight: 600; border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 16px; cursor: pointer; background: transparent; color: var(--ink);
+  }
+  input[type=text], input[type=date] {
+    font: inherit; font-size: 18px; padding: 14px; width: 100%;
+    background: #101815; border: 1px solid var(--line); border-radius: 10px;
+    color: var(--ink); margin-bottom: 12px;
+  }
+
+  .transcript-box {
+    background: #101815; border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px; min-height: 50px; font-size: 17px; margin-bottom: 12px;
+  }
+  .transcript-box.empty { color: var(--muted); font-style: italic; }
+  .confidence { font-size: 11px; color: var(--muted); margin-top: -8px; margin-bottom: 12px; }
+  .attempt-dots { display: flex; gap: 6px; margin-bottom: 14px; }
+  .attempt-dots span {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--line);
+  }
+  .attempt-dots span.used { background: var(--warn); }
+
+  .review-row { display: flex; justify-content: space-between; align-items: center;
+                padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .review-row .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .review-row .value { font-size: 15px; margin-top: 2px; }
+  .review-row button { font-size: 11px; padding: 4px 10px; }
+
+  .ref-number { font-size: 28px; font-weight: 800; color: var(--accent); text-align: center;
+                margin: 20px 0; letter-spacing: .05em; }
+  .disclaimer { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.5; }
+
+  .status-line { font-size: 12px; color: var(--muted); text-align: center; margin-top: 12px; }
+  .error-line { font-size: 13px; color: var(--bad); margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="kiosk">
+  <div class="setup-banner">
+    ⚠ Demo simulator, not the real kiosk. Speech goes to a real, unmocked
+    ASR/intent-matcher/TTS pipeline (speech-service). Only birth registration
+    is currently wired to a complete workflow; the other detected requests
+    receive a spoken staff-assistance fallback. Birth submissions create a real record in the
+    real backend on submit — spoken dates are supported in this demo, and this
+    still runs in a browser tab, not on kiosk hardware.
+    See DEMO_SCRIPT.md.
+  </div>
+  <h1>Mthandizi</h1>
+  <div class="tagline">Lankhulani. Mthandizi akuthandizeni.</div>
+
+  <!-- Screen: open-ended voice intent, never a service list -->
+  <div id="screen-intent" class="screen">
+    <div class="prompt" id="intentPrompt">Moni. Ndine Mthandizi. Ndingakuthandizeni bwanji lero?</div>
+    <div class="prompt-en" id="intentPromptEn">Hello. I am Mthandizi. How can I help you today?</div>
+    <div class="transcript-box empty" id="intentTranscript">&nbsp;</div>
+    <div class="confidence" id="intentConfidence">&nbsp;</div>
+    <div class="big-button" id="micStatus" role="status" aria-live="polite">Ndikukonzekera kumvetsera...</div>
+    <div class="row hidden" id="intentChoices" style="margin-top:10px">
+      <button class="secondary" id="intentYesBtn" style="flex:1">Inde</button>
+      <button class="secondary" id="intentNoBtn" style="flex:1">Ayi</button>
+    </div>
+    <div class="error-line" id="intentError"></div>
+    <div class="status-line" id="intentStatus">&nbsp;</div>
+  </div>
+
+  <!-- Screen: voice/touch workflow slot -->
+  <div id="screen-slot" class="screen hidden">
+    <div class="attempt-dots" id="attemptDots"></div>
+    <div class="prompt" id="slotPrompt"></div>
+    <div class="prompt-en" id="slotPromptEn"></div>
+
+    <div id="voiceArea">
+      <div class="transcript-box empty" id="transcriptBox">—</div>
+      <div class="confidence" id="confidenceLine">&nbsp;</div>
+      <div class="big-button" id="slotMicStatus" role="status" aria-live="polite">Ndikukonzekera kumvetsera...</div>
+      <div class="hidden" id="slotChoices" style="margin-top:10px">
+        <div class="status-line" id="slotConfirmPrompt"></div>
+        <div class="row">
+          <button class="secondary" id="slotYesBtn" style="flex:1">Inde</button>
+          <button class="secondary" id="slotRetryBtn" style="flex:1">Ayi, yesaninso</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="touchArea" class="hidden">
+      <input type="text" id="touchText" placeholder="Type here...">
+      <button class="big-button" id="touchSubmitBtn">Pitirizani (Continue)</button>
+    </div>
+
+    <div id="dateArea" class="hidden">
+      <input type="date" id="dateInput">
+      <button class="big-button" id="dateSubmitBtn">Pitirizani (Continue)</button>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <button class="secondary" id="backBtn" style="flex:1">Kumbuyo</button>
+      <button class="secondary hidden" id="skipBtn" style="flex:1">Pitirizani (Skip)</button>
+    </div>
+    <div class="error-line" id="errorLine"></div>
+    <div class="status-line" id="statusLine">&nbsp;</div>
+  </div>
+
+  <!-- Screen: review -->
+  <div id="screen-review" class="screen hidden">
+    <div class="prompt">Onani zonse</div>
+    <div class="prompt-en">Review everything</div>
+    <div id="reviewList"></div>
+    <div class="status-line" id="reviewStatus" role="status" aria-live="polite"></div>
+    <button class="big-button" id="confirmBtn">Zonse ndi zolondola (Confirm)</button>
+  </div>
+
+  <!-- Screen: done -->
+  <div id="screen-done" class="screen hidden">
+    <div class="prompt">Zatha!</div>
+    <div class="prompt-en">Done</div>
+    <div class="ref-number" id="refNumber"></div>
+    <div class="disclaimer">
+      Ichi si chikalata chovomerezeka — ndi pempho lokonzeka loti liwunikidwe ndi wogwira ntchito.<br>
+      <em>This is not an issued document — it is a prepared application awaiting officer verification.</em>
+    </div>
+    <button class="big-button" id="startOverBtn" style="margin-top:24px">Yambaninso (Start over)</button>
+  </div>
+</div>
+
+<script src="/kiosk-config.js"></script>
+<script>
+// ============================================================================
+// CONFIG — the two real backends this demo talks to
+// ============================================================================
+const SPEECH_SERVICE = window.MTHANDIZI_CONFIG?.speechServiceUrl || 'http://localhost:8090';
+const BACKEND = window.location.origin;             // same-origin - this page is served BY the backend
+
+// Maps our four workflow-engine slot types to how this demo collects them.
+// CLOSED_SET slots that speech-service actually has a matcher candidate set
+// for (only "district" currently - see speech-lab/lab/matching.py) get real
+// voice resolution. Anything else falls back to touch, HONESTLY - not
+// pretending a matcher exists where it doesn't.
+const SLOT_ASR_TYPES = { district: 'district' };  // slot.id -> speech-service ?slot= value
+
+const SERVICE = {
+  id: 'BIRTH_REGISTRATION',
+  referencePrefix: 'BR',
+  kioskId: 'kiosk-demo-browser',
+  slots: [
+    { id: 'child_name',  type: 'OPEN_NAME',  required: true,  label: "Child's name",
+      prompt: 'Dzina la mwana ndi ndani?', promptEn: "What is the child's name?" },
+    { id: 'child_dob',   type: 'DATE',       required: true,  label: 'Date of birth',
+      prompt: 'Mwana anabadwa liti? Nenani tsiku, mwezi ndi chaka, monga 10 Malichi 2024.',
+        promptEn: 'When was the child born? Say the day, month, and year, for example 10 March 2024.' },
+    { id: 'birth_place', type: 'FREE_TEXT',  required: true,  label: 'Place of birth',
+      prompt: 'Mwana anabadwira kuti?', promptEn: 'Where was the child born?' },
+    { id: 'mother_name', type: 'OPEN_NAME',  required: true,  label: "Mother's name",
+      prompt: 'Dzina la amayi a mwana ndi ndani?', promptEn: "What is the mother's name?" },
+    { id: 'father_name', type: 'OPEN_NAME',  required: false, label: "Father's name",
+      prompt: 'Dzina la abambo a mwana ndi ndani? Mungasiye.', promptEn: "Father's name? You may skip." },
+    { id: 'village',     type: 'FREE_TEXT',  required: true,  label: 'Village',
+      prompt: 'Muli mmudzi wanji?', promptEn: 'Which village are you from?' },
+    { id: 'district',    type: 'CLOSED_SET', required: true,  label: 'District',
+      prompt: 'Muli mboma lanji?', promptEn: 'Which district are you in?' },
+  ],
+};
+
+// ============================================================================
+// STATE — simple sequential walk. NOT a reimplementation of
+// workflow-engine's WorkflowEngine.kt (which has back-navigation history,
+// per-slot attempt tracking after touch-escalation, and 45 proven tests
+// behind it) - this is a deliberately SIMPLER orchestrator whose only job is
+// to prove the real ASR/matcher/TTS/backend pieces connect, not to
+// re-litigate control-flow correctness already proven elsewhere.
+// ============================================================================
+let currentIndex = 0;
+let filled = {};
+let attempts = 0;
+let mediaRecorder = null;
+let audioChunks = [];
+let dialogueMode = 'intent';
+let clarificationRound = 0;
+let pendingIntent = null;
+let pendingSlotValue = null;
+let confirmationRetry = false;
+let captureFailureCount = 0;
+let recordingContext = null;
+let recordingAnalyser = null;
+let recordingMonitor = null;
+let recordingStartedAt = 0;
+let speechDetected = false;
+let quietSince = 0;
+
+const INTENT_CONFIRMATIONS = {
+  BIRTH_REGISTRATION: 'Mukufuna kulembetsa mwana wanu wobadwa kumene, ndi choncho?',
+  HOSPITAL_QUEUE: 'Mukufuna kuonana ndi dokotala chifukwa simukumva bwino, ndi choncho?',
+  IMMIGRATION: 'Mukufuna chikalata cha ulendo kapena pasipoti, ndi choncho?',
+  NATIONAL_ID: 'Mukufuna thandizo la chiphaso cha dziko, ndi choncho?',
+  LAND_REGISTRATION: 'Mukufuna kulembetsa malo anu, ndi choncho?',
+  HEALTH_FACILITY_INFO: 'Mukufuna kudziwa komwe kuli chipatala, ndi choncho?',
+};
+
+const INTENT_DESCRIPTIONS = {
+  BIRTH_REGISTRATION: 'kulembetsa mwana',
+  HOSPITAL_QUEUE: 'kuonana ndi dokotala',
+  IMMIGRATION: 'kupeza chikalata cha ulendo',
+  NATIONAL_ID: 'kupeza chiphaso cha dziko',
+  LAND_REGISTRATION: 'kulembetsa malo',
+  HEALTH_FACILITY_INFO: 'kudziwa komwe kuli chipatala',
+};
+
+const $ = (id) => document.getElementById(id);
+const showScreen = (id) => {
+  ['screen-intent', 'screen-slot', 'screen-review', 'screen-done'].forEach(s =>
+    $(s).classList.toggle('hidden', s !== id));
+};
+
+function currentSlot() { return SERVICE.slots[currentIndex]; }
+
+function resetSlotUI() {
+  attempts = 0;
+  $('transcriptBox').textContent = '—';
+  $('transcriptBox').classList.add('empty');
+  $('confidenceLine').innerHTML = '&nbsp;';
+  $('errorLine').textContent = '';
+  $('statusLine').innerHTML = '&nbsp;';
+  $('slotChoices').classList.add('hidden');
+  $('slotConfirmPrompt').textContent = '';
+  pendingSlotValue = null;
+  $('touchText').value = '';
+  renderAttemptDots();
+}
+
+function renderAttemptDots() {
+  const dots = [0, 1, 2].map(i =>
+    `<span class="${i < attempts ? 'used' : ''}"></span>`).join('');
+  $('attemptDots').innerHTML = dots;
+}
+
+function renderSlot() {
+  const slot = currentSlot();
+  if (!slot) { goToReview(); return; }
+  resetSlotUI();
+  showScreen('screen-slot');
+
+  $('slotPrompt').textContent = slot.prompt;
+  $('slotPromptEn').textContent = slot.promptEn;
+  $('skipBtn').classList.toggle('hidden', slot.required);
+  $('backBtn').disabled = currentIndex === 0;
+
+  $('voiceArea').classList.remove('hidden');
+  $('touchArea').classList.add('hidden');
+  $('dateArea').classList.add('hidden');
+
+  speakAndListen(slot.prompt, 'slot');
+}
+
+async function speakPrompt(text, waitForPlayback = false) {
+  try {
+    const res = await fetch(`${SPEECH_SERVICE}/tts`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) return false;
+    const blob = await res.blob();
+    const audio = new Audio(URL.createObjectURL(blob));
+    const playbackFinished = waitForPlayback
+      ? new Promise(resolve => {
+          audio.addEventListener('ended', resolve, { once: true });
+          audio.addEventListener('error', resolve, { once: true });
+        })
+      : null;
+    try {
+      await audio.play();
+    } catch (err) {
+      return false;
+    }
+    if (playbackFinished && !audio.ended && !audio.paused) await playbackFinished;
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+async function startVoiceTurnAfterGreeting() {
+  await speakAndListen($('intentPrompt').textContent, 'intent');
+}
+
+async function waitForSpeechService(expectedMode) {
+  const statusId = expectedMode === 'intent' || expectedMode === 'confirm'
+    ? 'intentStatus' : expectedMode === 'review-confirm' ? 'reviewStatus' : 'statusLine';
+  $(statusId).textContent = 'Speech service is starting. Please wait...';
+  for (let attempt = 0; attempt < 180; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    try {
+      const res = await fetch(`${SPEECH_SERVICE}/health`, { cache: 'no-store' });
+      if (res.ok) {
+        $(statusId).innerHTML = '&nbsp;';
+        return true;
+      }
+    } catch (err) {
+      // The service does not accept connections until eager startup finishes.
+    }
+  }
+  return false;
+}
+
+async function speakAndListen(text, expectedMode) {
+  let played = await speakPrompt(text, true);
+  if (!played) {
+    let speechServiceReady = false;
+    let serviceUnreachable = false;
+    try {
+      const health = await fetch(`${SPEECH_SERVICE}/health`, { cache: 'no-store' });
+      speechServiceReady = health.ok;
+    } catch (err) {
+      serviceUnreachable = true;
+    }
+    if (speechServiceReady) {
+      played = await speakPrompt(text, true);
+    } else if (serviceUnreachable) {
+      if (await waitForSpeechService(expectedMode)) {
+        played = await speakPrompt(text, true);
+      }
+    }
+  }
+  if (!played) {
+    const statusId = expectedMode === 'intent' || expectedMode === 'confirm'
+      ? 'intentError' : expectedMode === 'review-confirm' ? 'reviewStatus' : 'errorLine';
+    $(statusId).textContent = 'Phokoso silikugwira ntchito. Pemphani thandizo kwa wogwira ntchito.';
+    return;
+  }
+  if (dialogueMode === expectedMode) await startMicrophoneCapture();
+}
+
+// --- voice capture -----------------------------------------------------------
+
+let activeMicStatus = null;
+
+async function startMicrophoneCapture() {
+  if (mediaRecorder?.state === 'recording') return;
+  const isIntentTurn = dialogueMode === 'intent' || dialogueMode === 'confirm';
+  activeMicStatus = $(isIntentTurn ? 'micStatus' : 'slotMicStatus');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      if (recordingMonitor) cancelAnimationFrame(recordingMonitor);
+      recordingMonitor = null;
+      if (recordingContext) recordingContext.close().catch(() => {});
+      recordingContext = null;
+      stream.getTracks().forEach(t => t.stop());
+      activeMicStatus.classList.remove('listening');
+      activeMicStatus.textContent = 'Ndikuganiza...';
+      handleRecordedAudio(new Blob(audioChunks, { type: 'audio/webm' }));
+    };
+    mediaRecorder.start();
+    startRecordingMonitor(stream);
+    activeMicStatus.classList.add('listening');
+    activeMicStatus.textContent = 'Ndikumvetsera...';
+  } catch (err) {
+    const isIntentTurn = dialogueMode === 'intent' || dialogueMode === 'confirm';
+    const message = 'Pepani, maikolofoni sikupezeka. Pemphani thandizo kwa wogwira ntchito.';
+    $(isIntentTurn ? 'intentError' : 'errorLine').textContent = message;
+    speakPrompt(message);
+  }
+}
+
+function startRecordingMonitor(stream) {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) {
+    setTimeout(() => mediaRecorder?.state === 'recording' && mediaRecorder.stop(), 12000);
+    return;
+  }
+  recordingContext = new AudioContextClass();
+  recordingAnalyser = recordingContext.createAnalyser();
+  recordingAnalyser.fftSize = 512;
+  recordingContext.createMediaStreamSource(stream).connect(recordingAnalyser);
+  const samples = new Uint8Array(recordingAnalyser.fftSize);
+  recordingStartedAt = performance.now();
+  speechDetected = false;
+  quietSince = 0;
+  const monitor = () => {
+    if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+    recordingAnalyser.getByteTimeDomainData(samples);
+    let sum = 0;
+    for (const sample of samples) {
+      const amplitude = (sample - 128) / 128;
+      sum += amplitude * amplitude;
+    }
+    const level = Math.sqrt(sum / samples.length);
+    const now = performance.now();
+    if (level > 0.035) {
+      speechDetected = true;
+      quietSince = 0;
+    } else if (speechDetected) {
+      quietSince ||= now;
+    }
+    if ((speechDetected && quietSince && now - quietSince > 1100) ||
+        now - recordingStartedAt > 12000) {
+      activeMicStatus.textContent = 'Ndikumva...';
+      mediaRecorder.stop();
+      return;
+    }
+    recordingMonitor = requestAnimationFrame(monitor);
+  };
+  recordingMonitor = requestAnimationFrame(monitor);
+}
+
+async function recordingToWav(blob) {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return blob;
+  const context = new AudioContextClass();
+  try {
+    const buffer = await context.decodeAudioData(await blob.arrayBuffer());
+    const channel = buffer.getChannelData(0);
+    const wav = new ArrayBuffer(44 + channel.length * 2);
+    const view = new DataView(wav);
+    const write = (offset, text) => [...text].forEach((char, index) =>
+      view.setUint8(offset + index, char.charCodeAt(0)));
+    write(0, 'RIFF'); view.setUint32(4, 36 + channel.length * 2, true);
+    write(8, 'WAVE'); write(12, 'fmt '); view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, buffer.sampleRate, true);
+    view.setUint32(28, buffer.sampleRate * 2, true);
+    view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+    write(36, 'data'); view.setUint32(40, channel.length * 2, true);
+    for (let i = 0; i < channel.length; i++) {
+      const sample = Math.max(-1, Math.min(1, channel[i]));
+      view.setInt16(44 + i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+    }
+    return new Blob([wav], { type: 'audio/wav' });
+  } finally {
+    await context.close();
+  }
+}
+
+$('intentYesBtn').addEventListener('click', () => handleConfirmationAnswer('YES'));
+$('intentNoBtn').addEventListener('click', () => handleConfirmationAnswer('NO'));
+$('slotYesBtn').addEventListener('click', () => handleSlotConfirmation('YES'));
+$('slotRetryBtn').addEventListener('click', () => handleSlotConfirmation('NO'));
+
+async function handleRecordedAudio(blob) {
+  if (!blob.size) {
+    retryAfterCaptureFailure('Sindinamve mawu. Chonde yankhani kachiwiri.');
+    return;
+  }
+  try {
+    blob = await recordingToWav(blob);
+  } catch (err) {
+    $('errorLine').textContent = 'Audio conversion failed: ' + err.message;
+    retryAfterCaptureFailure('Sindinathe kumva mawu amenewo. Chonde yankhani kachiwiri.');
+    return;
+  }
+  captureFailureCount = 0;
+  if (dialogueMode === 'intent' || dialogueMode === 'confirm') {
+    await handleIntentAudio(blob);
+    return;
+  }
+  if (dialogueMode === 'slot-confirm') {
+    await handleSlotConfirmationAudio(blob);
+    return;
+  }
+  if (dialogueMode === 'review-confirm') {
+    await handleReviewConfirmationAudio(blob);
+    return;
+  }
+  const slot = currentSlot();
+  $('statusLine').textContent = 'Ndikuganiza... (thinking)';
+  const asrSlotType = SLOT_ASR_TYPES[slot.id];
+
+  const form = new FormData();
+  form.append('audio', blob, 'clip.wav');
+  const url = `${SPEECH_SERVICE}/asr` + (asrSlotType ? `?slot=${asrSlotType}` : '');
+
+  try {
+    const res = await fetch(url, { method: 'POST', body: form });
+    if (!res.ok) throw new Error(`ASR request failed (${res.status})`);
+    const data = await res.json();
+    $('statusLine').innerHTML = '&nbsp;';
+
+    if (data.likely_silent) {
+      $('transcriptBox').textContent = '(silence)';
+      $('transcriptBox').classList.add('empty');
+      registerFailedAttempt();
+      return;
+    }
+
+    $('transcriptBox').textContent = data.text || '(nothing heard)';
+    $('transcriptBox').classList.remove('empty');
+
+    if (asrSlotType) {
+      // A real closed-set slot - use the REAL matcher's resolution, not a
+      // reimplementation. This is speech-lab's resolve(), proven to 100%
+      // slot accuracy on real benchmark data (Phase 0).
+      const r = data.resolution;
+      $('confidenceLine').textContent = r
+        ? `${r.outcome} · score ${r.score}${r.runner_up ? ` · runner-up: ${r.runner_up} (${r.runner_up_score})` : ''}`
+        : '';
+      if (r && r.outcome === 'ACCEPT') {
+        advanceSlot(r.key);
+      } else if (r && r.outcome === 'DISAMBIGUATE') {
+        askSlotConfirmation(r.key, `Kodi mukutanthauza "${r.key}"?`);
+      } else {
+        registerFailedAttempt();
+      }
+    } else {
+      // OPEN_NAME / FREE_TEXT: per Section 4.4 of the build prompt, names
+      // (and free text generally, in this simplified demo) are shown on
+      // screen and require explicit confirmation, never accepted from
+      // speech alone.
+      if (slot.type === 'DATE') {
+        const date = parseSpokenDate(data.text);
+        if (date) askSlotConfirmation(date, `Tsikuli ndi ${formatSpokenDate(date)}?`);
+        else retryCurrentQuestion('Sindinamve tsiku. Nenani tsiku, mwezi ndi chaka.');
+      } else if (data.text) askSlotConfirmation(data.text, `Ndi: "${data.text}"?`);
+      else registerFailedAttempt();
+    }
+  } catch (err) {
+    $('statusLine').innerHTML = '&nbsp;';
+    $('errorLine').textContent = 'Could not reach speech-service: ' + err.message +
+      ' — is it running at ' + SPEECH_SERVICE + '?';
+    dialogueMode = 'finished';
+    speakPrompt('Pepani, makina omvera sakugwira ntchito. Pemphani thandizo kwa wogwira ntchito.');
+  }
+}
+
+function retryAfterCaptureFailure(message) {
+  captureFailureCount++;
+  if (captureFailureCount >= 3) {
+    dialogueMode = 'finished';
+    const handoff = 'Pepani, sindinathe kumva mawu anu. Pemphani thandizo kwa wogwira ntchito.';
+    $('intentError').textContent = handoff;
+    $('errorLine').textContent = handoff;
+    speakPrompt(handoff);
+    return;
+  }
+  if (dialogueMode === 'intent') {
+    setIntentPrompt(message);
+    speakAndListen(message, 'intent');
+  } else if (dialogueMode === 'confirm') {
+    $('intentError').textContent = message;
+    speakAndListen(message, 'confirm');
+  } else if (dialogueMode === 'slot-confirm') {
+    $('slotConfirmPrompt').textContent = message;
+    speakAndListen(message, 'slot-confirm');
+  } else if (dialogueMode === 'review-confirm') {
+    $('reviewStatus').textContent = message;
+    speakAndListen(message, 'review-confirm');
+  } else if (dialogueMode === 'slot') {
+    registerFailedAttempt();
+  }
+}
+
+function registerFailedAttempt() {
+  attempts++;
+  renderAttemptDots();
+  if (attempts >= 3) {
+    dialogueMode = 'finished';
+    const message = 'Pepani, sindinamve bwino. Pemphani thandizo kwa wogwira ntchito.';
+    $('statusLine').textContent = message;
+    speakPrompt(message);
+    return;
+  }
+  retryCurrentQuestion(`Pepani, sindinamve bwino. ${currentSlot().prompt}`);
+}
+
+function retryCurrentQuestion(message) {
+  $('statusLine').textContent = message;
+  speakAndListen(message, dialogueMode);
+}
+
+function askSlotConfirmation(value, prompt) {
+  pendingSlotValue = value;
+  dialogueMode = 'slot-confirm';
+  $('slotConfirmPrompt').textContent = prompt;
+  $('slotChoices').classList.remove('hidden');
+  speakAndListen(prompt, 'slot-confirm');
+}
+
+async function handleSlotConfirmationAudio(blob) {
+  $('statusLine').textContent = 'Ndikuganiza...';
+  const form = new FormData();
+  form.append('audio', blob, 'clip.wav');
+  try {
+    const res = await fetch(`${SPEECH_SERVICE}/asr?slot=yesno`, { method: 'POST', body: form });
+    if (!res.ok) throw new Error(`ASR request failed (${res.status})`);
+    const data = await res.json();
+    $('statusLine').innerHTML = '&nbsp;';
+    handleSlotConfirmation(data.likely_silent ? null : data.resolution?.key);
+  } catch (err) {
+    $('statusLine').innerHTML = '&nbsp;';
+    $('errorLine').textContent = 'Could not reach speech-service: ' + err.message;
+    dialogueMode = 'finished';
+    speakPrompt('Pepani, makina omvera sakugwira ntchito. Pemphani thandizo kwa wogwira ntchito.');
+  }
+}
+
+function handleSlotConfirmation(answer) {
+  if (answer === 'YES' && pendingSlotValue) {
+    const value = pendingSlotValue;
+    pendingSlotValue = null;
+    $('slotChoices').classList.add('hidden');
+    dialogueMode = 'slot';
+    advanceSlot(value);
+  } else if (answer === 'NO') {
+    pendingSlotValue = null;
+    $('slotChoices').classList.add('hidden');
+    dialogueMode = 'slot';
+    $('statusLine').textContent = 'Chonde yankhani kachiwiri.';
+    registerFailedAttempt();
+  } else {
+    $('slotConfirmPrompt').textContent = 'Sindinamve bwino. Yankhani inde kapena ayi.';
+    speakAndListen($('slotConfirmPrompt').textContent, 'slot-confirm');
+  }
+}
+
+function setIntentPrompt(text) {
+  $('intentPrompt').textContent = text;
+  $('intentPromptEn').textContent = '';
+  $('intentChoices').classList.add('hidden');
+  $('intentTranscript').textContent = '—';
+  $('intentTranscript').classList.add('empty');
+  $('intentConfidence').textContent = '';
+  $('intentError').textContent = '';
+  $('intentStatus').innerHTML = '&nbsp;';
+}
+
+function explainIntentAgain() {
+  setIntentPrompt("Pepani, sindinamve bwino. Mungandiuze m'mawu anu zomwe mukufuna?");
+  dialogueMode = 'intent';
+  clarificationRound = 2;
+  speakAndListen($('intentPrompt').textContent, 'intent');
+}
+
+function askFirstClarification() {
+  setIntentPrompt("Pepani, sindinamve bwino. Kodi mungandifotokozere zomwe mukufuna?");
+  dialogueMode = 'intent';
+  clarificationRound = 1;
+  speakAndListen($('intentPrompt').textContent, 'intent');
+}
+
+function intentFallback() {
+  setIntentPrompt('Pepani, sindinamve bwino. Chonde pemphani thandizo kwa munthu amene akugwira ntchito pano.');
+  dialogueMode = 'finished';
+  speakPrompt($('intentPrompt').textContent);
+}
+
+function clarifyIntent(resolution) {
+  if (clarificationRound === 0 && resolution?.outcome === 'DISAMBIGUATE' &&
+      resolution.key && resolution.runner_up) {
+    const first = INTENT_DESCRIPTIONS[resolution.key];
+    const second = INTENT_DESCRIPTIONS[resolution.runner_up];
+    setIntentPrompt(`Kodi mukufuna ${first}, kapena ${second}?`);
+    clarificationRound = 1;
+    speakAndListen($('intentPrompt').textContent, 'intent');
+    return;
+  }
+  if (clarificationRound === 0) {
+    askFirstClarification();
+    return;
+  }
+  if (clarificationRound === 1) {
+    explainIntentAgain();
+    return;
+  }
+  intentFallback();
+}
+
+function handleIntentClassification(resolution) {
+  if (resolution?.outcome === 'ACCEPT' && resolution.key && INTENT_CONFIRMATIONS[resolution.key]) {
+    pendingIntent = resolution.key;
+    clarificationRound = 0;
+    confirmationRetry = false;
+    dialogueMode = 'confirm';
+    setIntentPrompt(INTENT_CONFIRMATIONS[pendingIntent]);
+    $('intentChoices').classList.remove('hidden');
+    $('intentConfidence').textContent = resolution.confidence || '';
+    speakAndListen($('intentPrompt').textContent, 'confirm');
+    return;
+  }
+  clarifyIntent(resolution);
+}
+
+function handleConfirmationAnswer(answer) {
+  if (answer === 'YES' && pendingIntent) {
+    $('intentChoices').classList.add('hidden');
+    enterWorkflow(pendingIntent);
+  } else if (answer === 'NO') {
+    $('intentChoices').classList.add('hidden');
+    pendingIntent = null;
+    clarificationRound = 0;
+    dialogueMode = 'intent';
+    setIntentPrompt('Chabwino. Ndiuzeni zimene mukufuna kuthandizidwa nazo.');
+    speakAndListen($('intentPrompt').textContent, 'intent');
+  } else if (!confirmationRetry) {
+    confirmationRetry = true;
+    dialogueMode = 'confirm';
+    setIntentPrompt('Pepani. Mukutanthauza zimenezi, inde kapena ayi?');
+    $('intentChoices').classList.remove('hidden');
+    speakAndListen($('intentPrompt').textContent, 'confirm');
+  } else {
+    pendingIntent = null;
+    clarificationRound = 0;
+    dialogueMode = 'intent';
+    setIntentPrompt('Pepani, sindinamve bwino. Ndiuzeni zimene mukufuna kuthandizidwa nazo.');
+    speakAndListen($('intentPrompt').textContent, 'intent');
+  }
+}
+
+async function handleIntentAudio(blob) {
+  const isConfirmation = dialogueMode === 'confirm';
+  $('intentStatus').textContent = 'Ndikuganiza...';
+  $('intentError').textContent = '';
+  const form = new FormData();
+  form.append('audio', blob, 'clip.wav');
+  const slot = isConfirmation ? 'yesno' : 'intent';
+
+  try {
+    const res = await fetch(`${SPEECH_SERVICE}/asr?slot=${slot}`, { method: 'POST', body: form });
+    if (!res.ok) throw new Error(`ASR request failed (${res.status})`);
+    const data = await res.json();
+    $('intentStatus').innerHTML = '&nbsp;';
+    $('intentTranscript').textContent = data.text || '(palibe mawu omwe amveka)';
+    $('intentTranscript').classList.toggle('empty', !data.text);
+
+    if (data.likely_silent) {
+      if (isConfirmation) handleConfirmationAnswer(null);
+      else handleIntentClassification(null);
+      return;
+    }
+    if (!isConfirmation) {
+      handleIntentClassification(data.resolution);
+      return;
+    }
+
+    handleConfirmationAnswer(data.resolution?.key);
+  } catch (err) {
+    $('intentStatus').innerHTML = '&nbsp;';
+    const reason = err.name === 'TypeError'
+      ? 'speech-service siyikupezeka pa localhost:8090'
+      : err.message;
+    $('intentError').textContent = `Pepani, ${reason}. Yambitsani speech-service kapena yesaninso.`;
+    dialogueMode = 'finished';
+    speakPrompt($('intentError').textContent);
+  }
+}
+
+function enterWorkflow(intent) {
+  if (intent !== 'BIRTH_REGISTRATION') {
+    const messages = {
+      HOSPITAL_QUEUE: 'Pepani, njira ya chipatala sinakonzedwe pano. Chonde pemphani thandizo kwa wogwira ntchito.',
+      IMMIGRATION: 'Pepani, njira ya pasipoti sinakonzedwe pano. Chonde pemphani thandizo kwa wogwira ntchito.',
+      NATIONAL_ID: 'Pepani, njira ya chiphaso cha dziko sinakonzedwe pano. Chonde pemphani thandizo kwa wogwira ntchito.',
+      LAND_REGISTRATION: 'Pepani, njira yolembetsa malo sinakonzedwe pano. Chonde pemphani thandizo kwa wogwira ntchito.',
+      HEALTH_FACILITY_INFO: 'Pepani, zambiri za zipatala sizinakonzedwe pano. Chonde pemphani thandizo kwa wogwira ntchito.',
+    };
+    pendingIntent = null;
+    dialogueMode = 'finished';
+    setIntentPrompt(messages[intent] || 'Pepani, chithandizo chimenechi sichikupezeka pano.');
+    speakPrompt($('intentPrompt').textContent);
+    return;
+  }
+  dialogueMode = 'slot';
+  pendingIntent = intent;
+  currentIndex = 0;
+  filled = {};
+  renderSlot();
+}
+
+// --- touch / date fallback ---------------------------------------------------
+
+$('touchSubmitBtn').addEventListener('click', () => {
+  const val = $('touchText').value.trim();
+  if (val) advanceSlot(val);
+});
+
+$('dateSubmitBtn').addEventListener('click', () => {
+  const val = $('dateInput').value;  // YYYY-MM-DD, exactly what workflow-engine's DATE slot expects
+  if (val) advanceSlot(val);
+});
+
+$('skipBtn').addEventListener('click', () => {
+  const slot = currentSlot();
+  if (slot.required) return;  // mirrors WorkflowEngine.skip()'s guard - never silently skip a required slot
+  delete filled[slot.id];
+  currentIndex++;
+  renderSlot();
+});
+
+$('backBtn').addEventListener('click', () => {
+  if (currentIndex > 0) { currentIndex--; renderSlot(); }
+});
+
+function advanceSlot(value) {
+  filled[currentSlot().id] = value;
+  currentIndex++;
+  renderSlot();
+}
+
+// --- review + submit ----------------------------------------------------------
+
+function goToReview() {
+  showScreen('screen-review');
+  const list = $('reviewList');
+  list.innerHTML = SERVICE.slots.map(slot => {
+    const value = filled[slot.id];
+    return `<div class="review-row">
+      <div><div class="label">${slot.label}</div>
+           <div class="value">${value ?? '<em style="color:var(--muted)">skipped</em>'}</div></div>
+      <button class="secondary" data-edit="${slot.id}">Konzani</button>
+    </div>`;
+  }).join('');
+  const labels = {
+    child_name: 'Dzina la mwana', child_dob: 'Tsiku lobadwa',
+    birth_place: 'Malo obadwira', mother_name: 'Dzina la amayi',
+    father_name: 'Dzina la abambo', village: 'Mudzi', district: 'Boma',
+  };
+  const spokenAnswers = SERVICE.slots.map(slot => {
+    let value = filled[slot.id];
+    if (slot.id === 'child_dob' && value) value = formatSpokenDate(value);
+    return `${labels[slot.id]}: ${value || 'munasiya'}.`;
+  }).join(' ');
+  dialogueMode = 'review-confirm';
+  const summary = `Tiyeni tionenso mayankho anu. ${spokenAnswers} Kodi zonse ndi zolondola? Yankhani inde kapena ayi.`;
+  $('reviewStatus').textContent = summary;
+  speakAndListen(summary, 'review-confirm');
+}
+
+async function handleReviewConfirmationAudio(blob) {
+  const form = new FormData();
+  form.append('audio', blob, 'clip.wav');
+  $('reviewStatus').textContent = 'Ndikuganiza...';
+  try {
+    const res = await fetch(`${SPEECH_SERVICE}/asr?slot=yesno`, { method: 'POST', body: form });
+    if (!res.ok) throw new Error(`ASR request failed (${res.status})`);
+    const data = await res.json();
+    const answer = data.likely_silent ? null : data.resolution?.key;
+    if (answer === 'YES') {
+      await submitApplication();
+    } else if (answer === 'NO') {
+      currentIndex = 0;
+      filled = {};
+      dialogueMode = 'slot';
+      $('statusLine').textContent = 'Tiyeni tiyambirenso kulemba pempho.';
+      renderSlot();
+    } else {
+      const prompt = 'Sindinamve bwino. Kodi zonse ndi zolondola? Yankhani inde kapena ayi.';
+      $('reviewStatus').textContent = prompt;
+      speakAndListen(prompt, 'review-confirm');
+    }
+  } catch (err) {
+    $('reviewStatus').textContent = 'Pepani, makina omvera sakugwira ntchito. Pemphani thandizo kwa wogwira ntchito.';
+    speakPrompt($('reviewStatus').textContent);
+    dialogueMode = 'finished';
+  }
+}
+
+$('reviewList').addEventListener('click', (e) => {
+  const slotId = e.target.dataset.edit;
+  if (!slotId) return;
+  currentIndex = SERVICE.slots.findIndex(s => s.id === slotId);
+  renderSlot();
+});
+
+$('confirmBtn').addEventListener('click', submitApplication);
+
+function placeholderReferenceNumber() {
+  // Same DELIBERATELY SIMPLE scheme as WorkflowEngine.kt's referenceNumber()
+  // in the Kotlin engine - a real deployment needs a persisted counter
+  // (Phase 10 territory), this is enough to demo end-to-end submission.
+  const str = Object.entries(filled).map(([k, v]) => `${k}=${v}`).join('|');
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) | 0;
+  const suffix = String(Math.abs(hash) % 1000000).padStart(6, '0');
+  return `${SERVICE.referencePrefix}-${suffix}`;
+}
+
+async function submitApplication() {
+  const referenceNumber = placeholderReferenceNumber();
+  const idempotencyKey = `kiosk-demo-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  try {
+    const res = await fetch(`${BACKEND}/api/applications`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        serviceId: SERVICE.id, referenceNumber, kioskId: SERVICE.kioskId,
+        payload: filled, idempotencyKey,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `Backend rejected the submission (${res.status})`);
+    }
+    showScreen('screen-done');
+    dialogueMode = 'finished';
+    $('refNumber').textContent = referenceNumber;
+    speakPrompt(`Zatha. Nambala yanu ndi ${referenceNumber}.`);
+  } catch (err) {
+    $('reviewStatus').textContent = 'Pempho silinathe kutumizidwa. Pemphani thandizo kwa wogwira ntchito.';
+    speakPrompt($('reviewStatus').textContent);
+  }
+}
+
+$('startOverBtn').addEventListener('click', () => {
+  currentIndex = 0; filled = {};
+  dialogueMode = 'intent';
+  clarificationRound = 0;
+  pendingIntent = null;
+  confirmationRetry = false;
+  captureFailureCount = 0;
+  setIntentPrompt('Moni. Ndine Mthandizi. Ndingakuthandizeni bwanji lero?');
+  showScreen('screen-intent');
+  speakAndListen($('intentPrompt').textContent, 'intent');
+});
+
+function parseSpokenDate(transcript) {
+  if (!transcript) return null;
+  const text = transcript.toLowerCase().replace(/[,]/g, ' ').replace(/\s+/g, ' ').trim();
+  let year;
+  let month;
+  let day;
+  const numeric = text.match(/\b(\d{1,4})[./-](\d{1,2})[./-](\d{1,4})\b/);
+  if (numeric) {
+    if (numeric[1].length === 4) {
+      [, year, month, day] = numeric;
+    } else {
+      [, day, month, year] = numeric;
+    }
+  } else {
+    const monthNumbers = {
+      january: 1, januwale: 1, januware: 1,
+      february: 2, febuluwale: 2, febuluware: 2,
+      march: 3, malichi: 3,
+      april: 4, epulo: 4, epulou: 4,
+      may: 5, meyi: 5, mei: 5,
+      june: 6, juni: 6,
+      july: 7, julayi: 7,
+      august: 8, ogasiti: 8, ogasti: 8,
+      september: 9, seputembala: 9,
+      october: 10, okutobala: 10,
+      november: 11, novembala: 11,
+      december: 12, disembala: 12,
+    };
+    const words = text.match(/[a-z0-9]+/g) || [];
+    const monthWord = words.find(word => monthNumbers[word]);
+    const numericWords = words.filter(word => /^\d+$/.test(word));
+    const yearWord = numericWords.find(word => word.length === 4);
+    const dayWord = numericWords.find(word => word !== yearWord);
+    if (!monthWord || !yearWord || !dayWord) return null;
+    year = yearWord;
+    month = String(monthNumbers[monthWord]);
+    day = dayWord;
+  }
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (y < 1900 || y > 2100 || date.getUTCFullYear() !== y ||
+      date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return null;
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function formatSpokenDate(isoDate) {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  const months = ['Januwale', 'Febuluwale', 'Malichi', 'Epulo', 'Meyi', 'Juni',
+    'Julayi', 'Ogasiti', 'Seputembala', 'Okutobala', 'Novembala', 'Disembala'];
+  return `${day} ${months[month - 1]} ${year}`;
+}
+
+startVoiceTurnAfterGreeting();
+</script>
+</body>
+</html>
+</html>
+</html>

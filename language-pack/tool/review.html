@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ny">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTHANDIZI — Chichewa Review</title>
+<style>
+  :root {
+    --bg:#0f1613; --panel:#18221e; --line:#2a3a33; --ink:#eaf2ee; --muted:#8fa89d;
+    --accent:#d98324; --good:#4caf7d; --warn:#e2b93b; --bad:#d95f5f;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:20px; background:var(--bg); color:var(--ink);
+         font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+  .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+             margin-bottom: 16px; position: sticky; top: 0; background: var(--bg);
+             padding: 10px 0; z-index: 5; }
+  .progress { flex: 1; height: 10px; background: #101815; border-radius: 999px;
+              overflow: hidden; border: 1px solid var(--line); }
+  .progress > div { height: 100%; background: var(--good); width: 0%; transition: width .2s; }
+  .progress-label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  input[type=file] { color: var(--muted); }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 8px;
+           padding: 9px 14px; cursor: pointer; background: var(--accent); color: #1a1208; }
+  button.secondary { background: #263329; color: var(--ink); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+          padding: 16px 18px; margin-bottom: 12px; }
+  .card.reviewed { border-color: var(--good); }
+  .card.rejected { border-color: var(--bad); }
+  .path { font-size: 11px; color: var(--muted); text-transform: uppercase;
+          letter-spacing: .06em; margin-bottom: 6px; }
+  .en { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+  textarea { width: 100%; font: inherit; font-size: 19px; background: #101815;
+             border: 1px solid var(--line); border-radius: 8px; color: var(--ink);
+             padding: 10px 12px; resize: vertical; min-height: 50px; }
+  .row { display:flex; gap:8px; margin-top: 10px; flex-wrap: wrap; align-items:center; }
+  .status { font-size: 12px; padding: 3px 9px; border-radius: 999px; font-weight: 700; }
+  .status.pending { background: rgba(226,185,59,.15); color: var(--warn); }
+  .status.approved { background: rgba(76,175,125,.15); color: var(--good); }
+  .status.rejected-status { background: rgba(217,95,95,.15); color: var(--bad); }
+  audio { height: 32px; }
+  .filters { display:flex; gap:6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filters button { background: #263329; color: var(--muted); padding: 6px 12px; font-size: 13px; }
+  .filters button.active { background: var(--accent); color: #1a1208; }
+  .empty { text-align:center; color: var(--muted); padding: 40px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MTHANDIZI — Chichewa Review</h1>
+  <p class="sub">Load the pack, listen to each prompt if a recording exists, edit the
+     Chichewa if it's wrong, approve or reject, then export a reviewed pack.</p>
+
+  <div class="toolbar">
+    <input type="file" id="loadFile" accept=".json">
+    <div class="progress"><div id="progressBar"></div></div>
+    <span class="progress-label" id="progressLabel">0 / 0</span>
+    <button id="exportBtn" class="secondary" disabled>Export reviewed pack</button>
+  </div>
+
+  <div class="filters" id="filters" hidden>
+    <button data-filter="all" class="active">All</button>
+    <button data-filter="pending">Pending</button>
+    <button data-filter="approved">Approved</button>
+    <button data-filter="rejected">Rejected</button>
+  </div>
+
+  <div id="cards"><div class="empty">Load chichewa_pack.json to begin.</div></div>
+</div>
+
+<script>
+let pack = null;
+let flatPaths = [];   // [{path, entry}]
+let currentFilter = 'all';
+
+function walk(node, path, out) {
+  if (node && typeof node === 'object' && !Array.isArray(node)) {
+    if ('chi' in node || 'en' in node) { out.push({ path, entry: node }); return; }
+    for (const [k, v] of Object.entries(node)) walk(v, path ? `${path}.${k}` : k, out);
+  } else if (Array.isArray(node)) {
+    node.forEach((v, i) => walk(v, `${path}[${i}]`, out));
+  }
+}
+
+function statusOf(entry) {
+  if (entry.rejected) return 'rejected';
+  if (entry.reviewed === true) return 'approved';
+  return 'pending';
+}
+
+function updateProgress() {
+  const total = flatPaths.length;
+  const done = flatPaths.filter(f => statusOf(f.entry) !== 'pending').length;
+  document.getElementById('progressBar').style.width = total ? `${(done/total)*100}%` : '0%';
+  document.getElementById('progressLabel').textContent = `${done} / ${total} reviewed`;
+  document.getElementById('exportBtn').disabled = total === 0;
+}
+
+function render() {
+  const container = document.getElementById('cards');
+  container.innerHTML = '';
+  const visible = flatPaths.filter(f => currentFilter === 'all' || statusOf(f.entry) === currentFilter);
+  if (!visible.length) {
+    container.innerHTML = `<div class="empty">Nothing to show for this filter.</div>`;
+    return;
+  }
+  for (const { path, entry } of visible) {
+    const status = statusOf(entry);
+    const card = document.createElement('div');
+    card.className = `card ${status === 'approved' ? 'reviewed' : ''} ${status === 'rejected' ? 'rejected' : ''}`;
+    card.innerHTML = `
+      <div class="path">${path}</div>
+      <div class="en">${entry.en ? 'EN: ' + entry.en : ''}</div>
+      <textarea data-path="${path}">${entry.chi ?? ''}</textarea>
+      ${entry.audio ? `<div style="margin-top:8px"><audio controls src="../audio/prompts/${(entry.audio||'').split('/').pop()}"></audio></div>` : ''}
+      <div class="row">
+        <span class="status ${status === 'rejected' ? 'rejected-status' : status}">${status}</span>
+        <button data-action="approve" data-path="${path}">Approve</button>
+        <button data-action="reject" data-path="${path}" class="secondary">Reject</button>
+        ${entry.note ? `<span style="color:var(--muted);font-size:12px">${entry.note}</span>` : ''}
+      </div>
+    `;
+    container.appendChild(card);
+  }
+}
+
+document.getElementById('loadFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  pack = JSON.parse(await file.text());
+  flatPaths = [];
+  walk(pack, '', flatPaths);
+  document.getElementById('filters').hidden = false;
+  updateProgress();
+  render();
+});
+
+document.getElementById('cards').addEventListener('input', (e) => {
+  if (e.target.tagName !== 'TEXTAREA') return;
+  const path = e.target.dataset.path;
+  const found = flatPaths.find(f => f.path === path);
+  if (found) found.entry.chi = e.target.value;
+});
+
+document.getElementById('cards').addEventListener('click', (e) => {
+  const action = e.target.dataset.action;
+  if (!action) return;
+  const path = e.target.dataset.path;
+  const found = flatPaths.find(f => f.path === path);
+  if (!found) return;
+  if (action === 'approve') { found.entry.reviewed = true; found.entry.rejected = false; }
+  if (action === 'reject')  { found.entry.reviewed = false; found.entry.rejected = true; }
+  updateProgress();
+  render();
+});
+
+document.getElementById('filters').addEventListener('click', (e) => {
+  if (!e.target.dataset.filter) return;
+  currentFilter = e.target.dataset.filter;
+  document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  render();
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  pack.meta = pack.meta || {};
+  const total = flatPaths.length;
+  const approved = flatPaths.filter(f => f.entry.reviewed === true).length;
+  pack.meta.review_status = `${approved}/${total} entries reviewed and approved`;
+  const blob = new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'chichewa_pack.reviewed.json';
+  a.click();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTHANDIZI — Admin</title>
+<style>
+  :root {
+    --bg: #0f1613; --panel: #18221e; --line: #2a3a33;
+    --ink: #eaf2ee; --muted: #8fa89d;
+    --accent: #d98324; --good: #4caf7d; --warn: #e2b93b; --bad: #d95f5f;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -.02em; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  button {
+    font: inherit; font-weight: 600; border: 0; border-radius: 8px;
+    padding: 9px 16px; cursor: pointer; background: var(--accent); color: #1a1208;
+  }
+  button.secondary { background: #263329; color: var(--ink); }
+  button.good { background: var(--good); color: #062010; }
+  button.bad { background: var(--bad); color: #2a0808; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  input {
+    font: inherit; padding: 10px 12px; background: #101815;
+    border: 1px solid var(--line); border-radius: 8px; color: var(--ink);
+  }
+  .panel { background: var(--panel); border: 1px solid var(--line);
+           border-radius: var(--radius); padding: 20px; margin-bottom: 18px; }
+  .hidden { display: none !important; }
+
+  #loginForm { max-width: 340px; margin: 80px auto; }
+  #loginForm h2 { margin-top: 0; }
+  #loginForm input { width: 100%; margin-bottom: 10px; }
+  #loginError { color: var(--bad); font-size: 13px; min-height: 18px; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+               gap: 12px; }
+  .stat-card { background: #101815; border: 1px solid var(--line); border-radius: 10px;
+               padding: 14px; }
+  .stat-card .n { font-size: 26px; font-weight: 700; }
+  .stat-card .label { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+  .filters { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  select { font: inherit; padding: 8px 10px; background: #101815; border: 1px solid var(--line);
+           border-radius: 8px; color: var(--ink); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase;
+       letter-spacing: .05em; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .pending_verification { background: rgba(226,185,59,.15); color: var(--warn); }
+  .verified { background: rgba(76,175,125,.15); color: var(--good); }
+  .rejected { background: rgba(217,95,95,.15); color: var(--bad); }
+  .row-actions { display: flex; gap: 6px; }
+  .row-actions button { padding: 5px 10px; font-size: 12px; }
+  .empty { text-align: center; color: var(--muted); padding: 30px 0; }
+  #toast { position: fixed; bottom: 20px; right: 20px; background: var(--panel);
+           border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px;
+           font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<form id="loginForm" class="panel">
+  <h2>MTHANDIZI Admin</h2>
+  <input id="username" placeholder="Username" autocomplete="username">
+  <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+  <button type="submit" style="width:100%">Log in</button>
+  <div id="loginError"></div>
+</form>
+
+<div id="dashboard" class="wrap hidden">
+  <header>
+    <div>
+      <h1>MTHANDIZI Admin</h1>
+      <div class="sub" id="whoami"></div>
+    </div>
+    <button class="secondary" id="logoutBtn">Log out</button>
+  </header>
+
+  <div class="panel">
+    <h3 style="margin-top:0">Applications by service and status</h3>
+    <div class="stat-grid" id="statGrid"></div>
+  </div>
+
+  <div class="panel">
+    <div class="filters">
+      <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="pending_verification">Pending verification</option>
+        <option value="verified">Verified</option>
+        <option value="rejected">Rejected</option>
+      </select>
+      <select id="serviceFilter">
+        <option value="">All services</option>
+      </select>
+      <button class="secondary" id="refreshBtn">Refresh</button>
+    </div>
+    <div id="tableWrap"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = window.location.origin;  // explicit, not relying on implicit relative-URL resolution
+let token = sessionStorage.getItem('mthandizi_admin_token') || null;
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(API + path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+  if (res.status === 401 && token) {
+    // Only a PREVIOUSLY-authenticated request going stale counts as a
+    // session expiring. A login attempt with a wrong password is also a
+    // 401, but there was never a token to expire - that's just a wrong
+    // password, and the backend's own message ("Invalid username or
+    // password") is more useful than a generic "session expired" that
+    // would confuse someone who was never logged in yet.
+    logout();
+    throw new Error('Session expired - please log in again');
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+  return body;
+}
+
+function logout() {
+  token = null;
+  sessionStorage.removeItem('mthandizi_admin_token');
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('loginForm').classList.remove('hidden');
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  try {
+    const body = await api('/api/auth/login', {
+      method: 'POST',
+      headers: {},
+      body: JSON.stringify({ username, password }),
+    });
+    token = body.token;
+    sessionStorage.setItem('mthandizi_admin_token', token);
+    document.getElementById('whoami').textContent = `Logged in as ${username}`;
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    await loadEverything();
+  } catch (err) {
+    errEl.textContent = err.message;
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', logout);
+document.getElementById('refreshBtn').addEventListener('click', loadEverything);
+document.getElementById('statusFilter').addEventListener('change', loadApplications);
+document.getElementById('serviceFilter').addEventListener('change', loadApplications);
+
+async function loadEverything() {
+  await Promise.all([loadStats(), loadApplications()]);
+}
+
+async function loadStats() {
+  const { stats } = await api('/api/applications/stats');
+  const grid = document.getElementById('statGrid');
+  if (!stats.length) {
+    grid.innerHTML = '<div class="empty">No applications yet.</div>';
+    return;
+  }
+  grid.innerHTML = stats.map(row => `
+    <div class="stat-card">
+      <div class="n">${row.count}</div>
+      <div class="label">${row.service_id} · ${row.status.replace('_', ' ')}</div>
+    </div>
+  `).join('');
+
+  // populate the service filter dropdown from REAL data, not a hardcoded list -
+  // a new service (config-only, per workflow-engine's own Phase 3 design) shows
+  // up here automatically the moment it has any applications.
+  const services = [...new Set(stats.map(r => r.service_id))].sort();
+  const select = document.getElementById('serviceFilter');
+  const current = select.value;
+  select.innerHTML = '<option value="">All services</option>' +
+    services.map(s => `<option value="${s}">${s}</option>`).join('');
+  select.value = current;
+}
+
+async function loadApplications() {
+  const status = document.getElementById('statusFilter').value;
+  const serviceId = document.getElementById('serviceFilter').value;
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (serviceId) params.set('serviceId', serviceId);
+
+  const { applications } = await api(`/api/applications?${params}`);
+  const wrap = document.getElementById('tableWrap');
+
+  if (!applications.length) {
+    wrap.innerHTML = '<div class="empty">No applications match this filter.</div>';
+    return;
+  }
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Reference</th><th>Service</th><th>Kiosk</th><th>Status</th><th>Created</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${applications.map(app => `
+          <tr>
+            <td>${app.reference_number}</td>
+            <td>${app.service_id}</td>
+            <td>${app.kiosk_id}</td>
+            <td><span class="pill ${app.status}">${app.status.replace('_', ' ')}</span></td>
+            <td>${new Date(app.created_at).toLocaleString()}</td>
+            <td class="row-actions">
+              ${app.status === 'pending_verification' ? `
+                <button class="good" data-verify="${app.id}">Verify</button>
+                <button class="bad" data-reject="${app.id}">Reject</button>
+              ` : ''}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+document.getElementById('tableWrap').addEventListener('click', async (e) => {
+  const verifyId = e.target.dataset.verify;
+  const rejectId = e.target.dataset.reject;
+  if (!verifyId && !rejectId) return;
+  const id = verifyId || rejectId;
+  const status = verifyId ? 'verified' : 'rejected';
+  try {
+    await api(`/api/applications/${id}/verify`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+    showToast(`Application #${id} marked ${status}`);
+    await loadEverything();
+  } catch (err) {
+    showToast(`Failed: ${err.message}`);
+  }
+});
+
+// If a token already exists in this tab's session (e.g. after a page reload),
+// skip straight to the dashboard rather than making the admin log in again.
+if (token) {
+  document.getElementById('loginForm').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  document.getElementById('whoami').textContent = 'Logged in';
+  loadEverything().catch((err) => {
+    showToast(err.message);
+    logout();
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# --- NEVER COMMIT THESE ---
+.env
+*.keystore
+*.jks
+local.properties
+
+# Model weights - gigabytes, and they belong on Hugging Face not in git
+models/
+.cache/
+hf_cache/
+
+# Real people's voices. Recordings of citizens are personal data.
+audio/recordings/*.wav
+audio/recordings/*.m4a
+audio/tts_out/
+!audio/recordings/.gitkeep
+
+# Generated
+reports/*.json
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+.pytest_cache/

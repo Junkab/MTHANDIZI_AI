@@ -1,0 +1,17 @@
+{
+  "id": "BIRTH_REGISTRATION",
+  "referencePrefix": "BR",
+  "slots": [
+    { "id": "child_name",   "type": "OPEN_NAME",  "required": true,  "label": "Child's name" },
+    { "id": "child_dob",    "type": "DATE",       "required": true,  "label": "Child's date of birth" },
+    { "id": "birth_place",  "type": "FREE_TEXT",  "required": true,  "label": "Place of birth" },
+    { "id": "mother_name",  "type": "OPEN_NAME",  "required": true,  "label": "Mother's name" },
+    { "id": "father_name",  "type": "OPEN_NAME",  "required": false, "label": "Father's name" },
+    { "id": "village",      "type": "FREE_TEXT",  "required": true,  "label": "Village" },
+    { "id": "district",     "type": "CLOSED_SET", "required": true,  "label": "District",
+      "choices": ["Lilongwe","Blantyre","Mzuzu","Zomba","Kasungu","Mangochi","Salima","Dedza",
+                  "Ntcheu","Nkhotakota","Mchinji","Dowa","Thyolo","Mulanje","Chikwawa","Nsanje",
+                  "Balaka","Machinga","Phalombe","Chiradzulu","Neno","Karonga","Rumphi",
+                  "Nkhata Bay","Mzimba","Chitipa","Likoma","Ntchisi"] }
+  ]
+}

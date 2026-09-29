@@ -1,0 +1,29 @@
+# MTHANDIZI Backend - docker-compose.
+#
+# Real deployment target. This sandbox has no Docker available (confirmed:
+# `which docker` returns nothing), so all testing in BUILD_LOG.md was done
+# against a directly-installed Postgres via `service postgresql start`
+# instead - genuinely real, just not through this file. This compose file
+# gives the operator (or a real deployment) the "database comes up with one
+# command" the build prompt asks for, using the exact same schema/migrations
+# already proven against real Postgres.
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: mthandizi
+      POSTGRES_USER: mthandizi
+      POSTGRES_PASSWORD: devpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - mthandizi_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mthandizi"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  mthandizi_pgdata:

@@ -97,7 +97,7 @@
 
   <!-- Screen: open-ended voice intent, never a service list -->
   <div id="screen-intent" class="screen">
-    <div class="prompt" id="intentPrompt">Moni. Ndine Mthandizi. Ndingakuthandizeni bwanji lero?</div>
+    <div class="prompt" id="intentPrompt">Ndine Mthandizi. Ndingakuthandizeni bwanji lero?</div>
     <div class="prompt-en" id="intentPromptEn">Hello. I am Mthandizi. How can I help you today?</div>
     <div class="transcript-box empty" id="intentTranscript">&nbsp;</div>
     <div class="confidence" id="intentConfidence">&nbsp;</div>
@@ -127,6 +127,12 @@
           <button class="secondary" id="slotRetryBtn" style="flex:1">Ayi, yesaninso</button>
         </div>
       </div>
+    </div>
+
+    <div id="nameFallbackArea" class="hidden">
+      <label class="prompt-en" for="nameFallbackInput">Lembani dzina la mwana</label>
+      <input type="text" id="nameFallbackInput" placeholder="Dzina la mwana" autocomplete="name">
+      <button class="big-button" id="nameFallbackSubmitBtn">Pitirizani (Continue)</button>
     </div>
 
     <div id="touchArea" class="hidden">
@@ -175,6 +181,13 @@
 // CONFIG — the two real backends this demo talks to
 // ============================================================================
 const SPEECH_SERVICE = window.MTHANDIZI_CONFIG?.speechServiceUrl || 'http://localhost:8090';
+const _originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+  if (typeof url === 'string' && url.startsWith(SPEECH_SERVICE)) {
+    options.headers = { ...options.headers, 'ngrok-skip-browser-warning': 'true' };
+  }
+  return _originalFetch(url, options);
+};
 const BACKEND = window.location.origin;             // same-origin - this page is served BY the backend
 
 // Maps our four workflow-engine slot types to how this demo collects them.
@@ -192,7 +205,7 @@ const SERVICE = {
     { id: 'child_name',  type: 'OPEN_NAME',  required: true,  label: "Child's name",
       prompt: 'Dzina la mwana ndi ndani?', promptEn: "What is the child's name?" },
     { id: 'child_dob',   type: 'DATE',       required: true,  label: 'Date of birth',
-      prompt: 'Mwana anabadwa liti? Nenani tsiku, mwezi ndi chaka, monga 10 Malichi 2024.',
+      prompt: 'Mwana anabadwa liti? Nenani tsiku, mwezi ndi chaka.',
         promptEn: 'When was the child born? Say the day, month, and year, for example 10 March 2024.' },
     { id: 'birth_place', type: 'FREE_TEXT',  required: true,  label: 'Place of birth',
       prompt: 'Mwana anabadwira kuti?', promptEn: 'Where was the child born?' },
@@ -218,6 +231,7 @@ const SERVICE = {
 let currentIndex = 0;
 let filled = {};
 let attempts = 0;
+let nameConfirmationFailures = 0;
 let mediaRecorder = null;
 let audioChunks = [];
 let dialogueMode = 'intent';
@@ -261,6 +275,7 @@ function currentSlot() { return SERVICE.slots[currentIndex]; }
 
 function resetSlotUI() {
   attempts = 0;
+  nameConfirmationFailures = 0;
   $('transcriptBox').textContent = '—';
   $('transcriptBox').classList.add('empty');
   $('confidenceLine').innerHTML = '&nbsp;';
@@ -268,6 +283,9 @@ function resetSlotUI() {
   $('statusLine').innerHTML = '&nbsp;';
   $('slotChoices').classList.add('hidden');
   $('slotConfirmPrompt').textContent = '';
+  $('slotRetryBtn').textContent = 'Ayi, yesaninso';
+  $('nameFallbackArea').classList.add('hidden');
+  $('nameFallbackInput').value = '';
   pendingSlotValue = null;
   $('touchText').value = '';
   renderAttemptDots();
@@ -556,7 +574,9 @@ async function handleRecordedAudio(blob) {
       if (slot.type === 'DATE') {
         const date = parseSpokenDate(data.text);
         if (date) askSlotConfirmation(date, `Tsikuli ndi ${formatSpokenDate(date)}?`);
-        else retryCurrentQuestion('Sindinamve tsiku. Nenani tsiku, mwezi ndi chaka.');
+        else registerFailedAttempt();
+      } else if (slot.id === 'child_name' && data.text) {
+        askSlotConfirmation(data.text, `Kodi dzina lanu ndi ${data.text}, ndi choncho?`);
       } else if (data.text) askSlotConfirmation(data.text, `Ndi: "${data.text}"?`);
       else registerFailedAttempt();
     }
@@ -599,6 +619,14 @@ function retryAfterCaptureFailure(message) {
 function registerFailedAttempt() {
   attempts++;
   renderAttemptDots();
+  if (currentSlot()?.id === 'child_name' && attempts >= 2) {
+    showNameTextFallback();
+    return;
+  }
+  if (currentSlot()?.id === 'child_dob' && attempts >= 2) {
+    showDateFallback();
+    return;
+  }
   if (attempts >= 3) {
     dialogueMode = 'finished';
     const message = 'Pepani, sindinamve bwino. Pemphani thandizo kwa wogwira ntchito.';
@@ -617,6 +645,8 @@ function retryCurrentQuestion(message) {
 function askSlotConfirmation(value, prompt) {
   pendingSlotValue = value;
   dialogueMode = 'slot-confirm';
+  $('slotRetryBtn').textContent = ['child_name', 'child_dob'].includes(currentSlot()?.id)
+    ? 'Ayi' : 'Ayi, yesaninso';
   $('slotConfirmPrompt').textContent = prompt;
   $('slotChoices').classList.remove('hidden');
   speakAndListen(prompt, 'slot-confirm');
@@ -648,15 +678,48 @@ function handleSlotConfirmation(answer) {
     dialogueMode = 'slot';
     advanceSlot(value);
   } else if (answer === 'NO') {
+    if (currentSlot()?.id === 'child_name') {
+      showNameTextFallback();
+      return;
+    }
     pendingSlotValue = null;
     $('slotChoices').classList.add('hidden');
     dialogueMode = 'slot';
     $('statusLine').textContent = 'Chonde yankhani kachiwiri.';
     registerFailedAttempt();
   } else {
+    if (currentSlot()?.id === 'child_name' && ++nameConfirmationFailures >= 2) {
+      showNameTextFallback();
+      return;
+    }
     $('slotConfirmPrompt').textContent = 'Sindinamve bwino. Yankhani inde kapena ayi.';
     speakAndListen($('slotConfirmPrompt').textContent, 'slot-confirm');
   }
+}
+
+function showNameTextFallback() {
+  if (currentSlot()?.id !== 'child_name') return;
+  pendingSlotValue = null;
+  $('slotChoices').classList.add('hidden');
+  $('voiceArea').classList.add('hidden');
+  $('touchArea').classList.add('hidden');
+  $('dateArea').classList.add('hidden');
+  $('nameFallbackArea').classList.remove('hidden');
+  $('errorLine').textContent = '';
+  $('statusLine').textContent = 'Chonde lembani dzina la mwana.';
+  $('nameFallbackInput').focus();
+}
+
+function showDateFallback() {
+  if (currentSlot()?.id !== 'child_dob') return;
+  pendingSlotValue = null;
+  $('slotChoices').classList.add('hidden');
+  $('voiceArea').classList.add('hidden');
+  $('touchArea').classList.add('hidden');
+  $('dateArea').classList.remove('hidden');
+  $('errorLine').textContent = '';
+  $('statusLine').textContent = 'Chonde sankhani tsiku lobadwa la mwana.';
+  $('dateInput').focus();
 }
 
 function setIntentPrompt(text) {
@@ -819,6 +882,22 @@ $('touchSubmitBtn').addEventListener('click', () => {
   if (val) advanceSlot(val);
 });
 
+function submitNameTextFallback() {
+  if (currentSlot()?.id !== 'child_name') return;
+  const value = $('nameFallbackInput').value.trim();
+  if (!value) {
+    $('errorLine').textContent = 'Chonde lembani dzina la mwana.';
+    return;
+  }
+  $('errorLine').textContent = '';
+  advanceSlot(value);
+}
+
+$('nameFallbackSubmitBtn').addEventListener('click', submitNameTextFallback);
+$('nameFallbackInput').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') submitNameTextFallback();
+});
+
 $('dateSubmitBtn').addEventListener('click', () => {
   const val = $('dateInput').value;  // YYYY-MM-DD, exactly what workflow-engine's DATE slot expects
   if (val) advanceSlot(val);
@@ -953,7 +1032,7 @@ $('startOverBtn').addEventListener('click', () => {
   pendingIntent = null;
   confirmationRetry = false;
   captureFailureCount = 0;
-  setIntentPrompt('Moni. Ndine Mthandizi. Ndingakuthandizeni bwanji lero?');
+  setIntentPrompt('Ndine Mthandizi. Ndingakuthandizeni bwanji lero?');
   showScreen('screen-intent');
   speakAndListen($('intentPrompt').textContent, 'intent');
 });
@@ -990,11 +1069,13 @@ function parseSpokenDate(transcript) {
     const monthWord = words.find(word => monthNumbers[word]);
     const numericWords = words.filter(word => /^\d+$/.test(word));
     const yearWord = numericWords.find(word => word.length === 4);
-    const dayWord = numericWords.find(word => word !== yearWord);
+    const spokenDayNumbers = { khumi: 10, lakhumi: 10 };
+    const dayWord = numericWords.find(word => word !== yearWord) ||
+      words.find(word => spokenDayNumbers[word]);
     if (!monthWord || !yearWord || !dayWord) return null;
     year = yearWord;
     month = String(monthNumbers[monthWord]);
-    day = dayWord;
+    day = String(spokenDayNumbers[dayWord] || dayWord);
   }
   const y = Number(year);
   const m = Number(month);

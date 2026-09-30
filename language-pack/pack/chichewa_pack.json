@@ -10,7 +10,7 @@
 
   "speech": {
     "greeting_idle": {
-      "chi": "Moni. Ndine Mthandizi. Ndingakuthandizeni bwanji lero?",
+      "chi": "Ndine Mthandizi. Ndingakuthandizeni bwanji lero?",
       "en": "Hello. I am Mthandizi. How can I help you today?",
       "audio": "prompts/greeting_idle.wav",
       "reviewed": false

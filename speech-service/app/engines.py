@@ -22,10 +22,10 @@ _tts_prompts_warmed = False
 _asr_lock = Lock()
 
 KIOSK_PROMPTS = (
-    "Moni. Ndine Mthandizi. Ndingakuthandizeni bwanji lero?",
+    "Ndine Mthandizi. Ndingakuthandizeni bwanji lero?",
     "Mukufuna kulembetsa mwana wanu wobadwa kumene, ndi choncho?",
     "Dzina la mwana ndi ndani?",
-    "Mwana anabadwa liti? Nenani tsiku, mwezi ndi chaka, monga 10 Malichi 2024.",
+    "Mwana anabadwa liti? Nenani tsiku, mwezi ndi chaka.",
     "Mwana anabadwira kuti?",
     "Dzina la amayi a mwana ndi ndani?",
     "Dzina la abambo a mwana ndi ndani? Mungasiye.",
